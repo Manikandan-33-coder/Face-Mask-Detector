@@ -1,0 +1,7 @@
+pip install tensorflow
+pip install pillow
+pip install numpy
+pip install flask
+
+Dataset Download Link to be given Velow:
+https://www.kaggle.com/datasets/andrewmvd/face-mask-detection
