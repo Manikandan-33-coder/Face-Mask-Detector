@@ -1,77 +1,69 @@
 import os
 from PIL import Image
-import zipfile
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
-# Make dataset folder
-#os.makedirs("Dataset", exist_ok=True)
+# Dataset path (relative, safe for GitHub/Render)
+dataset_path = "project/Dataset"
 
-# Extract images
-#with zipfile.ZipFile("Dataset/archive (19).zip", 'r') as zip_ref:
-    #zip_ref.extractall("project")
-
+# Image size and categories
 target_size = (150, 150)
-dataset_folders = [
-    r"C:\Users\smgop\Desktop\Task\FaceMask Detector\archive (19)\Dataset\mask_weared_incorrect",
-    r"C:\Users\smgop\Desktop\Task\FaceMask Detector\archive (19)\Dataset\with_mask",
-    r"C:\Users\smgop\Desktop\Task\FaceMask Detector\archive (19)\Dataset\without_mask"
-]
+classes = ["mask_weared_incorrect", "with_mask", "without_mask"]
 
-# Resize function
-def resize_image(folder_path):
-    for img_name in os.listdir(folder_path):
-        img_path = os.path.join(folder_path, img_name)
-        try:
-            img = Image.open(img_path)
-            img = img.resize(target_size)
-            img.save(img_path)
-        except:
-            print(f"Couldn't process image {img_path}")
+# Resize images (safe for all OS)
+def resize_images(base_path):
+    for cls in classes:
+        folder_path = os.path.join(base_path, cls)
+        for img_name in os.listdir(folder_path):
+            img_path = os.path.join(folder_path, img_name)
+            try:
+                img = Image.open(img_path)
+                img = img.resize(target_size)
+                img.save(img_path)
+            except:
+                print(f"Couldn't process image: {img_path}")
 
-for folder in dataset_folders:
-    resize_image(folder)
+# Resize all images
+resize_images(dataset_path)
 
-# Data Generators
+# Data generators
 datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
 
 train_generator = datagen.flow_from_directory(
-    r"C:\Users\smgop\Desktop\Task\FaceMask Detector\archive (19)\Dataset",
-    target_size=(150,150),
+    dataset_path,
+    target_size=target_size,
     batch_size=32,
     class_mode='categorical',
     subset='training'
 )
 
-validation_generator = datagen.flow_from_directory(
-    r"C:\Users\smgop\Desktop\Task\FaceMask Detector\archive (19)\Dataset",
-    target_size=(150,150),
+val_generator = datagen.flow_from_directory(
+    dataset_path,
+    target_size=target_size,
     batch_size=32,
     class_mode='categorical',
     subset='validation'
 )
 
-# CNN Model
-model = Sequential()
-model.add(Conv2D(32, (3,3), activation='relu', input_shape=(150,150,3)))
-model.add(MaxPooling2D(2,2))
-
-model.add(Conv2D(64, (3,3), activation='relu'))
-model.add(MaxPooling2D(2,2))
-
-model.add(Conv2D(128, (3,3), activation='relu'))
-model.add(MaxPooling2D(2,2))
-
-model.add(Flatten())
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-
-model.add(Dense(3, activation='softmax'))
+# CNN model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 3)),
+    MaxPooling2D(2, 2),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D(2, 2),
+    Conv2D(128, (3, 3), activation='relu'),
+    MaxPooling2D(2, 2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(3, activation='softmax')
+])
 
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-model.fit(train_generator, validation_data=validation_generator, epochs=10)
+# Train the model
+model.fit(train_generator, validation_data=val_generator, epochs=10)
 
-
-model.save("C:/Users/smgop/Desktop/Task/FaceMask Detector/Face_Mask_cnn_model.h5")
+# Save model to current directory (for Flask)
+model.save("face_mask_Detection_cnn_model.h5")
